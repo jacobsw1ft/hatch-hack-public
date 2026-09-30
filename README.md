@@ -191,6 +191,19 @@ Vercel + GitHub.
 The backend auto-discovers your device (MAC / thing name) from your account, so
 nothing device-specific is hardcoded.
 
+### Vercel gotchas we hit (so you don't have to)
+
+These are the specific things that tripped us up getting the Python backend live:
+
+- **Use Python 3.9+ locally.** We built the venv with 3.12 (`python3.12 -m venv .venv`); the stock system Python was too old for some deps.
+- **"No Python entrypoint found."** Vercel wants a single WSGI entrypoint. That's why `pyproject.toml` has `[tool.vercel] entrypoint = "api.index:app"` and all routes live in one Flask app (`api/index.py`), not multiple handler files.
+- **"Failed to run 'uv lock' — No `project` table found."** Add a real `[project]` table (name / version / requires-python / dependencies) to `pyproject.toml`. Don't rely on a bare `requirements.txt`.
+- **Deployment Protection = a 401 login wall.** By default Vercel may gate your deployment behind its own auth, so the browser page can't reach the API. Turn it off: Project → Settings → Deployment Protection.
+- **Use the stable production URL** (e.g. `your-project.vercel.app`) as `API_BASE` in `hatch-app.html` — not the per-deploy hashed preview URLs.
+- **Git commit author.** Pushing from a fresh machine with a `…​.local` email can get commits rejected by GitHub/Vercel. Set a valid `git config --global user.email` / `user.name` first.
+- **Function timeout.** Alarm writes poll Hatch for eventual consistency, so `vercel.json` sets `maxDuration: 30` to give those retries headroom.
+- **Login rate limits (429).** Hatch throttles logins aggressively. The backend caches the auth token (6 h, in-memory on the warm instance) so a burst of actions uses one login. If you hammer it during testing you may still see 429s — wait a bit.
+
 ### 2. Frontend (any static host)
 
 1. Edit `hatch-app.html` and set `API_BASE` to your Vercel URL.
