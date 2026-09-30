@@ -1,0 +1,15 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Vercel
+.vercel/
+
+# Personal / device-specific data dumps
+alarm_sample.json

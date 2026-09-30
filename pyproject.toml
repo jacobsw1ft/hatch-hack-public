@@ -1,0 +1,13 @@
+[project]
+name = "hatch-hack"
+version = "0.1.0"
+description = "Backend for the Hatch Restore 3 web controller (alarms + night-light)"
+requires-python = ">=3.9"
+dependencies = [
+    "flask",
+    "requests",
+    "paho-mqtt",
+]
+
+[tool.vercel]
+entrypoint = "api.index:app"

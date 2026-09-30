@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hatch Catalog</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --text: #14181f;
+    --muted: #5c6672;
+    --border: #e3e7ec;
+    --accent: #c9611e;      /* warm sunrise orange */
+    --accent-soft: #fbe9dc;
+    --ring: rgba(201, 97, 30, 0.35);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101317;
+      --card: #191d23;
+      --text: #eef1f5;
+      --muted: #9aa4b0;
+      --border: #2a3038;
+      --accent: #f08a3c;
+      --accent-soft: #33231690;
+      --ring: rgba(240, 138, 60, 0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101317; --card: #191d23; --text: #eef1f5; --muted: #9aa4b0;
+    --border: #2a3038; --accent: #f08a3c; --accent-soft: #33231690;
+    --ring: rgba(240, 138, 60, 0.4);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    padding: 24px 16px 8px; max-width: 960px; margin: 0 auto;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px 60px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab {
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 14px;
+  }
+  .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  input[type="search"] {
+    flex: 1; min-width: 180px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 15px;
+  }
+  input[type="search"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  select#category {
+    padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 14px;
+  }
+  select#category:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  .count { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .badge {
+    display: inline-block; font-size: 11px; color: var(--accent); background: var(--accent-soft);
+    padding: 2px 8px; border-radius: 999px; align-self: flex-start;
+  }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  .card .title { font-weight: 600; font-size: 14px; }
+  .card .ids { font-size: 11px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    border-radius: 9px; padding: 7px 12px; cursor: pointer; font-size: 13px; font-weight: 600;
+  }
+  .btn.play { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+  .btn.play.playing { background: var(--accent); color: #fff; }
+  .btn.pick { margin-left: auto; }
+  .btn.pick.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .swatch { width: 100%; height: 92px; border-radius: 10px; background: #222 center/cover no-repeat; border: 1px solid var(--border); }
+  .status { padding: 40px 0; text-align: center; color: var(--muted); }
+  .pickbar {
+    position: sticky; bottom: 0; margin-top: 20px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px;
+    display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;
+  }
+  .pickbar b { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Hatch Restore 3 — Sound &amp; Color Catalog</h1>
+  <p class="sub">Audition every alarm sound and preview every sunrise color. Your picks are remembered for the alarm builder.</p>
+</header>
+<div class="wrap">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-view="tracks">Alarm sounds</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="colors">Sunrise colors</button>
+  </div>
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Search by name…" autocomplete="off">
+    <select id="category"></select>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="status" id="status">Loading catalog…</div>
+  <div class="pickbar">
+    <span>Selected sound: <b id="pickSound">none</b></span>
+    <span>Selected color: <b id="pickColor">none</b></span>
+  </div>
+</div>
+
+<audio id="player"></audio>
+
+<script>
+const CTF_URL = "https://graphql.contentful.com/content/v1/spaces/hlsdh3zwyrtx/environments/master";
+const CTF_TOKEN = "w81AL3BhokPlPGus5Pbs2UjK9hOEH-WYoJ4OOpOQpUI"; // Hatch's public read token (ships in the app)
+const DEVICE = "restoreV5";
+
+// Themes that are spoken-word (podcasts / audiobooks) — hidden by default since
+// they're not alarm sounds and share a common musical intro.
+const SPOKEN = new Set(["Podcast", "Audiobooks", "The Nightly"]);
+const state = { view: "tracks", tracks: [], colors: [], query: "", category: "__wake__" };
+const player = document.getElementById("player");
+let playingId = null;
+
+const picks = loadPicks();
+renderPicks();
+
+async function ctf(query) {
+  const res = await fetch(CTF_URL, {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + CTF_TOKEN, "Content-Type": "application/json" },
+    body: JSON.stringify({ query })
+  });
+  if (!res.ok) throw new Error("Contentful " + res.status);
+  const json = await res.json();
+  if (json.errors) throw new Error(json.errors[0].message);
+  return json.data;
+}
+
+async function fetchAll(collection, fields, where) {
+  // Page through a collection 100 at a time.
+  let skip = 0, out = [], total = Infinity;
+  while (skip < total) {
+    const data = await ctf(`{ ${collection}(limit:100, skip:${skip}, where:${where}) { total items { ${fields} } } }`);
+    const c = data[collection];
+    total = c.total;
+    out = out.concat(c.items);
+    if (c.items.length === 0) break;
+    skip += 100;
+  }
+  return out;
+}
+
+async function load() {
+  try {
+    const whereTracks = `{ hatchId_gt:0, hidden:false, tier:"free", devices:{ devCode_in:["${DEVICE}"] } }`;
+    const whereColors = `{ lightType:"sunrise", hidden:false, tier:"free", devices:{ devCode_in:["${DEVICE}"] } }`;
+    const [tracks, colors] = await Promise.all([
+      fetchAll("trackCollection", `title hatchId sys{id} mp3File{url} theme{title}`, whereTracks),
+      fetchAll("colorCollection", `title hatchId sys{id} image{url}`, whereColors)
+    ]);
+    // De-dupe tracks that share the same audio file (RV4/RV5 variants), keep first.
+    const seen = new Set();
+    state.tracks = tracks.filter(t => t.mp3File && t.mp3File.url).map(t => ({
+      ...t, themeTitle: (t.theme && t.theme.title) || "Other"
+    })).filter(t => {
+      if (seen.has(t.mp3File.url)) return false; seen.add(t.mp3File.url); return true;
+    }).sort((a,b) => a.title.localeCompare(b.title));
+    state.colors = colors.sort((a,b) => a.title.localeCompare(b.title));
+    buildCategoryOptions();
+    document.getElementById("status").style.display = "none";
+    render();
+  } catch (e) {
+    document.getElementById("status").textContent = "Could not load catalog: " + e.message +
+      " — if this is a CORS error opening the file directly, run a local server (see notes).";
+  }
+}
+
+function buildCategoryOptions() {
+  const themes = [...new Set(state.tracks.map(t => t.themeTitle))]
+    .filter(t => !SPOKEN.has(t)).sort();
+  const spokenThemes = [...new Set(state.tracks.map(t => t.themeTitle))]
+    .filter(t => SPOKEN.has(t)).sort();
+  const sel = document.getElementById("category");
+  const opt = (v, label) => `<option value="${v}">${label}</option>`;
+  sel.innerHTML =
+    opt("__wake__", "Wake sounds (no spoken)") +
+    themes.map(t => opt(t, t)).join("") +
+    opt("__all__", "Everything (incl. spoken)") +
+    spokenThemes.map(t => opt(t, "🗣 " + t)).join("");
+  sel.value = state.category;
+}
+
+function render() {
+  const grid = document.getElementById("grid");
+  const q = state.query.toLowerCase();
+  const isTracks = state.view === "tracks";
+  document.getElementById("category").style.display = isTracks ? "" : "none";
+  let items = (isTracks ? state.tracks : state.colors)
+    .filter(i => i.title.toLowerCase().includes(q));
+  if (isTracks) {
+    if (state.category === "__wake__") items = items.filter(t => !SPOKEN.has(t.themeTitle));
+    else if (state.category !== "__all__") items = items.filter(t => t.themeTitle === state.category);
+  }
+  document.getElementById("count").textContent = items.length + " items";
+  grid.innerHTML = "";
+  for (const item of items) {
+    grid.appendChild(isTracks ? trackCard(item) : colorCard(item));
+  }
+}
+
+function trackCard(t) {
+  const el = document.createElement("div");
+  el.className = "card" + (picks.sound && picks.sound.hatchId === t.hatchId ? " selected" : "");
+  el.innerHTML = `
+    <span class="badge">${escapeHtml(t.themeTitle)}</span>
+    <div class="title">${escapeHtml(t.title)}</div>
+    <div class="ids">id ${t.hatchId} · ${t.sys.id}</div>
+    <div class="row">
+      <button class="btn play">▶ Play</button>
+      <button class="btn pick ${picks.sound && picks.sound.hatchId === t.hatchId ? "on" : ""}">${picks.sound && picks.sound.hatchId === t.hatchId ? "✓ Chosen" : "Choose"}</button>
+    </div>`;
+  const playBtn = el.querySelector(".play");
+  playBtn.onclick = () => togglePlay(t, playBtn);
+  el.querySelector(".pick").onclick = () => { picks.sound = { hatchId: t.hatchId, contentfulId: t.sys.id, title: t.title }; savePicks(); render(); renderPicks(); };
+  return el;
+}
+
+function colorCard(c) {
+  const el = document.createElement("div");
+  el.className = "card" + (picks.color && picks.color.hatchId === c.hatchId ? " selected" : "");
+  const img = c.image && c.image.url ? `background-image:url('${c.image.url}')` : "";
+  el.innerHTML = `
+    <div class="swatch" style="${img}"></div>
+    <div class="title">${escapeHtml(c.title)}</div>
+    <div class="ids">id ${c.hatchId} · ${c.sys.id}</div>
+    <button class="btn pick ${picks.color && picks.color.hatchId === c.hatchId ? "on" : ""}">${picks.color && picks.color.hatchId === c.hatchId ? "✓ Chosen" : "Choose"}</button>`;
+  el.querySelector(".pick").onclick = () => { picks.color = { hatchId: c.hatchId, contentfulId: c.sys.id, title: c.title }; savePicks(); render(); renderPicks(); };
+  return el;
+}
+
+function togglePlay(t, btn) {
+  if (playingId === t.hatchId) {
+    player.pause(); playingId = null;
+    document.querySelectorAll(".btn.play").forEach(b => { b.classList.remove("playing"); b.textContent = "▶ Play"; });
+    return;
+  }
+  document.querySelectorAll(".btn.play").forEach(b => { b.classList.remove("playing"); b.textContent = "▶ Play"; });
+  player.src = t.mp3File.url;
+  player.play().then(() => { playingId = t.hatchId; btn.classList.add("playing"); btn.textContent = "❚❚ Stop"; })
+    .catch(err => { btn.textContent = "⚠ error"; console.error(err); });
+}
+player.onended = () => {
+  playingId = null;
+  document.querySelectorAll(".btn.play").forEach(b => { b.classList.remove("playing"); b.textContent = "▶ Play"; });
+};
+
+function renderPicks() {
+  document.getElementById("pickSound").textContent = picks.sound ? `${picks.sound.title} (id ${picks.sound.hatchId})` : "none";
+  document.getElementById("pickColor").textContent = picks.color ? `${picks.color.title} (id ${picks.color.hatchId})` : "none";
+}
+function loadPicks() { try { return JSON.parse(localStorage.getItem("hatchPicks")) || {}; } catch { return {}; } }
+function savePicks() { try { localStorage.setItem("hatchPicks", JSON.stringify(picks)); } catch {} }
+function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])); }
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", "false"));
+    tab.setAttribute("aria-selected", "true");
+    state.view = tab.dataset.view;
+    document.getElementById("search").value = ""; state.query = "";
+    render();
+  };
+});
+document.getElementById("search").oninput = e => { state.query = e.target.value; render(); };
+document.getElementById("category").onchange = e => { state.category = e.target.value; render(); };
+
+load();
+</script>
+</body>
+</html>

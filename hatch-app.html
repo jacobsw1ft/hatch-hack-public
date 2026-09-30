@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#122253">
+<meta name="color-scheme" content="dark light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hatch">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Hatch Control</title>
+<style>
+  :root{
+    --text:#1e2a44; --muted:#5b6786;
+    --card:rgba(255,255,255,.72); --input:rgba(255,255,255,.9);
+    --border:rgba(90,120,170,.18); --hair:rgba(90,120,170,.12);
+    --accent:#2f6fe0; --accent-soft:rgba(47,111,224,.12); --ring:rgba(47,111,224,.32);
+    --on:#34c759; --danger:#e5556a;
+    --radius:22px; --shadow:0 14px 36px rgba(18,36,88,.16);
+  }
+  *{box-sizing:border-box}
+  html{height:100%}
+  body{
+    margin:0; min-height:100vh; min-height:100dvh; color:var(--text);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    -webkit-tap-highlight-color:transparent;
+    background:linear-gradient(180deg,#122253 0%,#1f3f89 26%,#3f72c4 54%,#8dbce6 82%,#bcdcf3 100%);
+    background-attachment:fixed;
+  }
+  /* fixed night-sky scene */
+  #sky{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+  #sky .star{position:absolute;background:#fff;border-radius:50%;
+    box-shadow:0 0 6px 1px rgba(255,255,255,.45);animation:tw 4s ease-in-out infinite}
+  @keyframes tw{0%,100%{opacity:.25}50%{opacity:.95}}
+  .moon{position:absolute;top:calc(env(safe-area-inset-top,0px) + 20px);right:24px;
+    filter:drop-shadow(0 0 16px rgba(210,228,255,.55))}
+  @media (prefers-reduced-motion:reduce){#sky .star{animation:none}}
+
+  #pin,#app{position:relative;z-index:1}
+  .wrap{max-width:600px;margin:0 auto;
+    padding:calc(env(safe-area-inset-top,0px) + 22px) 16px calc(env(safe-area-inset-bottom,0px) + 96px);}
+
+  /* text that sits directly on the sky */
+  .sky-title{color:#fff;font-size:30px;font-weight:700;letter-spacing:-.4px;margin:0;text-shadow:0 1px 16px rgba(8,18,48,.4)}
+  .sky-sub{color:rgba(255,255,255,.74);font-size:14px;margin:3px 0 0;text-shadow:0 1px 12px rgba(8,18,48,.35)}
+  h2{font-size:13px;margin:28px 6px 11px;color:rgba(255,255,255,.82);font-weight:600;letter-spacing:.01em;
+    text-shadow:0 1px 12px rgba(8,18,48,.3)}
+  .sub{color:var(--muted);font-size:13px;margin:0}
+
+  button{font:inherit;cursor:pointer;color:inherit}
+  .btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;
+    padding:13px 18px;font-weight:600;min-height:48px;backdrop-filter:blur(20px) saturate(160%);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);transition:transform .08s ease,background .15s}
+  .btn:active{transform:scale(.975)}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#fff;box-shadow:0 8px 22px rgba(47,111,224,.34)}
+  .btn.ghost{background:transparent;border-color:transparent;box-shadow:none}
+  .btn.danger{color:var(--danger);background:rgba(229,85,106,.1);border-color:transparent}
+  .btn.block{width:100%}
+  .btn:disabled{opacity:.5;cursor:default}
+  /* circular icon buttons */
+  .circbtn{width:42px;height:42px;min-height:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    padding:0;font-size:19px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.32);color:#fff;
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:transform .08s ease}
+  .circbtn:active{transform:scale(.93)}
+  .circbtn.accent{background:var(--accent);border-color:transparent;font-size:26px;font-weight:300;
+    box-shadow:0 8px 20px rgba(47,111,224,.42)}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;
+    box-shadow:var(--shadow);backdrop-filter:blur(24px) saturate(170%);-webkit-backdrop-filter:blur(24px) saturate(170%)}
+  .row{display:flex;align-items:center;gap:12px}
+  .spread{justify-content:space-between}
+  .hidden{display:none!important}
+  .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 26px);transform:translateX(-50%);
+    background:rgba(26,28,38,.92);color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;max-width:88%;
+    box-shadow:0 12px 32px rgba(0,0,0,.38);z-index:60;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+
+  /* PIN screen */
+  #pin{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:22px;text-align:center;padding:24px}
+  #pinDots{display:flex;gap:16px}
+  #pinDots span{width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.22);
+    border:1px solid rgba(255,255,255,.5);transition:.2s}
+  #pinDots span.on{background:#fff;border-color:#fff;box-shadow:0 0 12px rgba(255,255,255,.65)}
+  #pinField{position:absolute;opacity:0;pointer-events:none}
+  .keypad{display:grid;grid-template-columns:repeat(3,74px);gap:18px;margin-top:8px}
+  .keypad button{height:74px;width:74px;border-radius:50%;border:1px solid rgba(255,255,255,.28);
+    background:rgba(255,255,255,.15);color:#fff;font-size:28px;font-weight:400;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:transform .08s ease,background .15s}
+  .keypad button:active{background:rgba(255,255,255,.34);transform:scale(.95)}
+  .keypad .blank{border:none;background:transparent;cursor:default}
+
+  /* night light */
+  .nl{display:flex;align-items:center;gap:16px}
+  .nlbulb{width:50px;height:50px;border-radius:50%;flex:none;border:1px solid var(--border);
+    background:radial-gradient(circle at 50% 38%, #6b7486, #464e5e);transition:.35s}
+  .nl.on .nlbulb{background:radial-gradient(circle at 50% 38%, #ffe6bd, #ffab5c);
+    box-shadow:0 0 30px 7px rgba(255,171,92,.72);border-color:#ffc98a}
+
+  /* nighttime sounds */
+  .snd .disc{width:50px;height:50px;border-radius:50%;flex:none;border:1px solid var(--border);
+    background:radial-gradient(circle at 50% 38%, #6b7486, #464e5e);display:grid;place-items:center;
+    font-size:22px;transition:.35s}
+  .snd.on .disc{background:radial-gradient(circle at 50% 38%, #cbd8ff, #7f9be2);
+    box-shadow:0 0 28px 6px rgba(127,155,226,.6);border-color:#9db3ee}
+
+  /* iOS-style switch */
+  .switch{position:relative;width:51px;height:31px;flex:none}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:rgba(120,130,150,.35);border-radius:31px;transition:.25s}
+  .slider:before{content:"";position:absolute;height:27px;width:27px;left:2px;top:2px;background:#fff;border-radius:50%;
+    transition:.25s;box-shadow:0 2px 5px rgba(0,0,0,.25)}
+  .switch input:checked+.slider{background:var(--on)}
+  .switch input:checked+.slider:before{transform:translateX(20px)}
+
+  /* alarm rows */
+  .alarm{margin-bottom:12px;padding:18px}
+  .alarm .time{font-size:34px;font-weight:600;letter-spacing:-1px}
+  .alarm .meta{color:var(--muted);font-size:14px;margin-top:1px}
+  .alarm.off .time,.alarm.off .meta{opacity:.45}
+  .alarm .ctrls{display:flex;align-items:center;gap:4px}
+  .iconbtn{border:none;background:transparent;color:var(--muted);border-radius:50%;width:40px;height:40px;
+    font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;transition:transform .08s ease}
+  .iconbtn:active{transform:scale(.9)}
+  .iconbtn.del:active{background:rgba(229,85,106,.16);color:var(--danger)}
+  .chipline{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+  .chip{font-size:12px;color:var(--muted);background:rgba(90,120,170,.1);border:none;border-radius:999px;padding:5px 11px;font-weight:500}
+
+  /* bottom-sheet modals */
+  .modal{position:fixed;inset:0;background:rgba(8,16,40,.42);display:flex;align-items:flex-end;justify-content:center;
+    z-index:40;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  @media(min-width:600px){.modal{align-items:center;padding:20px}}
+  .sheet{background:linear-gradient(180deg,rgba(248,251,255,.94),rgba(238,244,253,.94));
+    width:100%;max-width:560px;max-height:90vh;max-height:90dvh;overflow:auto;overscroll-behavior:contain;
+    border-radius:26px 26px 0 0;padding:10px 18px calc(env(safe-area-inset-bottom,0px) + 26px);
+    backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);
+    box-shadow:0 -12px 44px rgba(8,18,50,.28)}
+  @media(min-width:600px){.sheet{border-radius:26px;max-height:88vh}}
+  .grabber{width:38px;height:5px;border-radius:3px;background:rgba(90,110,150,.3);margin:2px auto 8px}
+  .sheet h1{font-size:20px;font-weight:700;margin:0}
+  .field{margin:16px 0}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:500}
+  input[type="text"],input[type="time"]{width:100%;padding:13px 14px;border:1px solid var(--border);border-radius:13px;
+    background:var(--input);color:var(--text);font-size:16px}
+  input[type="text"]:focus,input[type="time"]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)}
+  input[type="range"]{width:100%;accent-color:var(--accent);height:30px}
+  .pickbtn{width:100%;text-align:left;display:flex;align-items:center;gap:13px;background:var(--input);min-height:58px}
+  .pickbtn:after{content:"›";margin-left:auto;color:var(--muted);font-size:22px;font-weight:400;line-height:1}
+  .swatch{width:38px;height:38px;border-radius:10px;background:#334 center/cover;border:1px solid var(--border);flex:none}
+
+  /* segmented control (repeat presets) */
+  .seg{display:flex;background:rgba(90,120,170,.12);border-radius:12px;padding:3px;gap:3px}
+  .seg button{flex:1;border:none;background:transparent;color:var(--text);border-radius:9px;padding:10px 4px;
+    font-size:13px;font-weight:600;transition:.15s}
+  .seg button.on{background:#fff;box-shadow:0 2px 6px rgba(18,36,88,.16)}
+
+  .daychips{display:flex;gap:7px;margin-top:10px}
+  .daychips button{flex:1;min-width:0;border:1px solid var(--border);background:var(--input);color:var(--text);
+    border-radius:11px;padding:11px 0;font-size:13px;font-weight:600}
+  .daychips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  /* catalog picker */
+  .pgrid{display:grid;gap:11px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:12px}
+  .pcard{background:var(--input);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .pcard.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--ring)}
+  .pcard .t{font-size:13px;font-weight:600}
+  .pcard .badge{font-size:11px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 9px;align-self:flex-start;font-weight:600}
+  .pcard .pimg{width:100%;height:72px;border-radius:9px;background:#334 center/cover;border:1px solid var(--border)}
+  .pcard .mini{border:none;background:var(--accent-soft);color:var(--accent);border-radius:9px;padding:9px;font-size:12px;font-weight:600}
+  .pcard .mini.playing{background:var(--accent);color:#fff}
+  .toolbar{display:flex;gap:8px;position:sticky;top:0;padding:6px 0 8px;z-index:2;
+    background:linear-gradient(180deg,rgba(246,250,255,.99),rgba(246,250,255,.7))}
+  .toolbar input,.toolbar select{padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--input);color:var(--text);font-size:16px}
+  .toolbar input{flex:1;min-width:0}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- fixed night sky (stars injected by JS) -->
+<div id="sky" aria-hidden="true">
+  <svg class="moon" width="58" height="58" viewBox="0 0 58 58">
+    <defs><mask id="crescent">
+      <rect width="58" height="58" fill="#fff"/>
+      <circle cx="37" cy="23" r="19" fill="#000"/>
+    </mask></defs>
+    <circle cx="27" cy="29" r="19" fill="#eef4ff" mask="url(#crescent)"/>
+  </svg>
+</div>
+
+<!-- PIN gate -->
+<div id="pin">
+  <div>
+    <h1 class="sky-title">Hatch Control</h1>
+    <p class="sky-sub">Enter your PIN</p>
+  </div>
+  <div id="pinDots"><span></span><span></span><span></span><span></span></div>
+  <input id="pinField" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
+  <div class="keypad" id="keypad"></div>
+  <p class="sky-sub" id="pinMsg">&nbsp;</p>
+</div>
+
+<!-- Main app -->
+<div id="app" class="wrap hidden">
+  <div class="row spread" style="margin-bottom:4px">
+    <div><h1 class="sky-title">Hatch Control</h1><p class="sky-sub" id="deviceName">…</p></div>
+    <button class="circbtn" id="refreshBtn" aria-label="Refresh">↻</button>
+  </div>
+
+  <h2>Bedside lamp</h2>
+  <div class="card nl" id="nlCard">
+    <div class="nlbulb"></div>
+    <div style="flex:1">
+      <div style="font-weight:600">Night-light</div>
+      <div class="sub">Warm white · 2700K · 100%</div>
+    </div>
+    <label class="switch"><input type="checkbox" id="nlToggle"><span class="slider"></span></label>
+  </div>
+
+  <div class="row spread">
+    <h2 style="margin:28px 6px 11px">Alarms</h2>
+    <button class="circbtn accent" id="newBtn" aria-label="New alarm">+</button>
+  </div>
+  <p class="sub" id="slotInfo" style="margin:4px 4px 8px">&nbsp;</p>
+  <div id="alarmList"><p class="sub" style="padding:20px 4px">Loading…</p></div>
+
+  <h2>Nighttime sounds</h2>
+  <div class="card snd" id="sndCard">
+    <div class="nl">
+      <div class="disc">🎵</div>
+      <div style="flex:1">
+        <div style="font-weight:600">Play a sound</div>
+        <div class="sub" id="sndState">Nothing playing</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="sndToggle"><span class="slider"></span></label>
+    </div>
+    <button class="btn pickbtn" id="sndPick" style="margin-top:14px"><span id="sndLbl">Choose a sound…</span></button>
+    <div class="field" style="margin:14px 0 0">
+      <label>Volume: <b id="sndVolVal">40</b>%</label>
+      <input type="range" id="sndVol" min="0" max="100" step="1" value="40">
+    </div>
+  </div>
+</div>
+
+<!-- Editor modal -->
+<div id="editor" class="modal hidden">
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="row spread"><h1 id="editTitle">New alarm</h1>
+      <button class="iconbtn" data-close="editor" aria-label="Close">✕</button></div>
+
+    <div class="field"><label>Name</label><input type="text" id="fName" placeholder="Weekday wake"></div>
+    <div class="field"><label>Wake-up time</label><input type="time" id="fWake"></div>
+
+    <div class="field">
+      <label>Light starts before wake: <b id="leadVal">20</b> min</label>
+      <input type="range" id="fLead" min="0" max="60" step="5" value="20">
+      <p class="sub" id="timePreview" style="margin:8px 2px 0">&nbsp;</p>
+    </div>
+
+    <div class="field">
+      <label>Repeat</label>
+      <div class="seg" id="presets">
+        <button data-mask="0">Once</button>
+        <button data-mask="62">Weekdays</button>
+        <button data-mask="65">Weekends</button>
+        <button data-mask="127">Every day</button>
+      </div>
+      <div class="daychips" id="dayChips"></div>
+    </div>
+
+    <div class="field">
+      <label>Sunrise color</label>
+      <button class="btn pickbtn" id="colorPick"><span class="swatch" id="colorSw"></span>
+        <span id="colorLbl">Choose a color…</span></button>
+    </div>
+
+    <div class="field">
+      <label>Alarm sound</label>
+      <button class="btn pickbtn" id="soundPick"><span id="soundLbl">Choose a sound…</span></button>
+    </div>
+
+    <div class="field">
+      <label>Volume: <b id="volVal">60</b>%</label>
+      <input type="range" id="fVol" min="0" max="100" step="1" value="60">
+    </div>
+
+    <div class="field row spread">
+      <span>Enabled</span>
+      <label class="switch"><input type="checkbox" id="fEnabled"><span class="slider"></span></label>
+    </div>
+
+    <button class="btn primary block" id="saveBtn" style="margin-top:10px">Save alarm</button>
+    <button class="btn danger block" id="deleteBtn" style="margin-top:10px">Delete alarm</button>
+    <p class="sub" id="editMsg" style="text-align:center;margin-top:12px">&nbsp;</p>
+  </div>
+</div>
+
+<!-- Catalog picker modal -->
+<div id="picker" class="modal hidden">
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="row spread"><h1 id="pickTitle">Choose</h1>
+      <button class="iconbtn" data-close="picker" aria-label="Close">✕</button></div>
+    <div class="toolbar">
+      <input type="search" id="pickSearch" placeholder="Search…">
+      <select id="pickCat" class="hidden"></select>
+    </div>
+    <div class="pgrid" id="pickGrid"></div>
+    <p class="sub" id="pickStatus" style="padding:16px 0">Loading catalog…</p>
+  </div>
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+const API_BASE = "https://YOUR-BACKEND.vercel.app"; // <-- set to your Vercel deployment URL
+const CTF_URL = "https://graphql.contentful.com/content/v1/spaces/hlsdh3zwyrtx/environments/master";
+const CTF_TOKEN = "w81AL3BhokPlPGus5Pbs2UjK9hOEH-WYoJ4OOpOQpUI";
+const DEVICE = "restoreV5";
+const DAY_BITS = {Sun:1,Mon:2,Tue:4,Wed:8,Thu:16,Fri:32,Sat:64};
+const DAY_ORDER = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+let PIN = sessionStorage.getItem("hatchPin") || "";
+let catalog = {tracks:null, colors:null};
+let editing = null;          // alarm being edited, or null for new
+let draft = {};              // working copy of editor fields
+const $ = s => document.querySelector(s);
+
+/* ---------- backend ---------- */
+async function api(path, {method="GET", body=null}={}){
+  const res = await fetch(API_BASE+path, {
+    method, headers:{"X-Pin":PIN, ...(body?{"Content-Type":"application/json"}:{})},
+    body: body ? JSON.stringify(body) : null
+  });
+  const data = await res.json().catch(()=>({}));
+  if(res.status===401) throw new Error("pin");
+  if(!res.ok || data.error) throw new Error(data.error || ("HTTP "+res.status));
+  return data;
+}
+
+/* ---------- PIN gate ---------- */
+function buildKeypad(){
+  const kp=$("#keypad");
+  ["1","2","3","4","5","6","7","8","9","","0","⌫"].forEach(k=>{
+    const b=document.createElement("button");
+    if(k===""){b.className="blank";b.disabled=true;}
+    else{b.textContent=k; b.onclick=()=>pinKey(k);}
+    kp.appendChild(b);
+  });
+}
+let pinBuf="";
+function pinKey(k){
+  if(k==="⌫") pinBuf=pinBuf.slice(0,-1);
+  else if(pinBuf.length<4) pinBuf+=k;
+  renderDots();
+  if(pinBuf.length===4) submitPin();
+}
+function renderDots(){
+  document.querySelectorAll("#pinDots span").forEach((s,i)=>s.classList.toggle("on", i<pinBuf.length));
+}
+async function submitPin(){
+  $("#pinMsg").textContent="Checking…";
+  try{
+    const r=await fetch(API_BASE+"/api/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pin:pinBuf})});
+    const d=await r.json();
+    if(d.ok){ PIN=pinBuf; sessionStorage.setItem("hatchPin",PIN); enterApp(); }
+    else { $("#pinMsg").textContent="Wrong PIN"; pinBuf=""; renderDots(); }
+  }catch(e){ $("#pinMsg").textContent="Network error"; pinBuf=""; renderDots(); }
+}
+// hidden field to trigger numeric keyboard on mobile tap
+$("#pinField").addEventListener("input",e=>{ pinBuf=e.target.value.replace(/\D/g,"").slice(0,4); renderDots(); if(pinBuf.length===4) submitPin(); });
+$("#pinDots").addEventListener("click",()=>$("#pinField").focus());
+
+function enterApp(){
+  $("#pin").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  loadAlarms();
+  refreshNight();
+}
+
+/* ---------- alarms ---------- */
+function fmtWake(startTime, lead){
+  // wake = startTime + lead minutes
+  const d = new Date(startTime.replace(" ","T"));
+  d.setMinutes(d.getMinutes()+lead);
+  return d.toTimeString().slice(0,5);
+}
+function daysLabel(m){
+  if(m===0) return "Once"; if(m===62) return "Weekdays"; if(m===65) return "Weekends"; if(m===127) return "Every day";
+  return DAY_ORDER.filter(d=>m&DAY_BITS[d]).join(" ");
+}
+function to12(hhmm){
+  let [h,mn]=hhmm.split(":").map(Number); const ap=h>=12?"PM":"AM"; h=h%12||12;
+  return `${h}:${String(mn).padStart(2,"0")} ${ap}`;
+}
+function updateSlots(n){
+  const info=$("#slotInfo"); n = (n==null? null : n);
+  if(n==null){ info.innerHTML="&nbsp;"; return; }
+  $("#newBtn").disabled = n<=0;
+  info.textContent = n>0 ? `${n} free alarm slot${n===1?"":"s"}`
+    : "No free slots — add blank alarms in the Hatch app to make more.";
+}
+async function loadAlarms(){
+  try{
+    const d=await api("/api/alarms");
+    $("#deviceName").textContent=d.device||"";
+    renderAlarms(d.alarms||[]); updateSlots(d.freeSlots);
+  }catch(e){ handleErr(e, "Couldn't load alarms"); }
+}
+function renderAlarms(alarms){
+  ALARMS = alarms;
+  const list=$("#alarmList"); list.innerHTML="";
+  if(!alarms.length){ list.innerHTML='<p class="sub" style="padding:16px 4px">No alarms yet. Tap “+ New”.</p>'; return; }
+  // sort by wake time
+  alarms.sort((a,b)=>fmtWake(a.startTime,a.leadMinutes).localeCompare(fmtWake(b.startTime,b.leadMinutes)));
+  for(const a of alarms){
+    const wake=fmtWake(a.startTime,a.leadMinutes);
+    const el=document.createElement("div");
+    el.className="card alarm"+(a.enabled?"":" off");
+    el.innerHTML=`
+      <div class="row spread">
+        <div>
+          <div class="time">${to12(wake)}</div>
+          <div class="meta">${escape(a.name||"Alarm")} · ${daysLabel(a.daysOfWeek)}</div>
+        </div>
+        <div class="ctrls">
+          <label class="switch"><input type="checkbox" ${a.enabled?"checked":""}><span class="slider"></span></label>
+          <button class="iconbtn del" title="Delete alarm" aria-label="Delete alarm">🗑</button>
+        </div>
+      </div>
+      <div class="chipline">
+        <span class="chip">☀ ${a.leadMinutes}m sunrise</span>
+        <span class="chip">🔊 ${a.volume}%</span>
+      </div>`;
+    el.querySelector('input[type="checkbox"]').onchange=ev=>toggleAlarm(a, ev.target.checked, ev.target);
+    el.querySelector(".del").onclick=ev=>{ev.stopPropagation();deleteAlarmRow(a,el);};
+    el.querySelector(".time").onclick=()=>openEditor(a);
+    el.querySelector(".meta").onclick=()=>openEditor(a);
+    list.appendChild(el);
+  }
+}
+let ALARMS=[];
+async function toggleAlarm(a, on, input){
+  input.disabled=true;
+  try{
+    const d=await api("/api/alarms",{method:"POST",body:{action:"setEnabled",id:a.id,enabled:on}});
+    renderAlarms(d.alarms); toast(on?"Alarm on":"Alarm off");
+  }catch(e){ input.checked=!on; handleErr(e,"Couldn't update"); }
+  finally{ input.disabled=false; }
+}
+async function deleteAlarmRow(a, el){
+  if(!confirm(`Delete the ${to12(fmtWake(a.startTime,a.leadMinutes))} alarm${a.name?` (“${a.name}”)`:""}? This can’t be undone.`)) return;
+  el.style.opacity=".4"; el.style.pointerEvents="none";
+  try{
+    const d=await api("/api/alarms",{method:"POST",body:{action:"delete",id:a.id}});
+    renderAlarms(d.alarms); updateSlots(d.freeSlots); toast("Alarm deleted");
+  }catch(e){ el.style.opacity=""; el.style.pointerEvents=""; handleErr(e,"Couldn't delete"); }
+}
+
+/* ---------- night-light ---------- */
+$("#nlToggle").onchange=async e=>{
+  const on=e.target.checked; e.target.disabled=true;
+  $("#nlCard").classList.toggle("on", on);
+  toast(on?"Turning on…":"Turning off…");
+  try{ await api("/api/nightlight",{method:"POST",body:{on}}); toast(on?"Light on":"Light off"); }
+  catch(err){ e.target.checked=!on; $("#nlCard").classList.toggle("on",!on); handleErr(err,"Light failed"); }
+  finally{ e.target.disabled=false; }
+};
+
+/* ---------- nighttime sounds (independent of the light) ---------- */
+let night = { sound:null, volume:40, on:false };
+try{ const s=JSON.parse(localStorage.getItem("hatchNight")||"null"); if(s){ night.sound=s.sound||null; night.volume=s.volume??40; } }catch(_){}
+function saveNight(){ try{ localStorage.setItem("hatchNight", JSON.stringify({sound:night.sound, volume:night.volume})); }catch(_){} }
+function refreshNight(){
+  $("#sndLbl").textContent = night.sound ? (night.sound.title||("Sound "+night.sound.hatchId)) : "Choose a sound…";
+  $("#sndVol").value = night.volume; $("#sndVolVal").textContent = night.volume;
+  $("#sndCard").classList.toggle("on", night.on);
+  $("#sndToggle").checked = night.on;
+  $("#sndState").textContent = night.on && night.sound ? `Playing · ${night.sound.title}` : "Nothing playing";
+}
+async function sendSound(on){
+  return api("/api/sound",{method:"POST",body:{on, sound: night.sound ? {hatchId:night.sound.hatchId, url:night.sound.url} : null, volume: night.volume}});
+}
+function setNightSound(val){
+  night.sound = val; saveNight(); refreshNight();
+  if(night.on){ sendSound(true).catch(err=>handleErr(err,"Couldn't switch sound")); }  // live-swap while playing
+}
+$("#sndPick").onclick=()=>openPicker("tracks","night");
+$("#sndToggle").onchange=async e=>{
+  const on=e.target.checked;
+  if(on && !night.sound){ e.target.checked=false; toast("Pick a sound first"); openPicker("tracks","night"); return; }
+  e.target.disabled=true; night.on=on; $("#sndCard").classList.toggle("on",on);
+  toast(on?"Starting…":"Stopping…");
+  try{ await sendSound(on); refreshNight(); toast(on?"Playing":"Stopped"); }
+  catch(err){ night.on=!on; e.target.checked=!on; refreshNight(); handleErr(err,"Sound failed"); }
+  finally{ e.target.disabled=false; }
+};
+$("#sndVol").oninput=e=>{ night.volume=+e.target.value; $("#sndVolVal").textContent=night.volume; };
+$("#sndVol").onchange=e=>{ night.volume=+e.target.value; saveNight(); if(night.on) sendSound(true).catch(err=>handleErr(err,"Volume failed")); };
+
+/* ---------- editor ---------- */
+function nextStart(wakeHHMM, lead){
+  const [h,m]=wakeHHMM.split(":").map(Number);
+  const now=new Date(); const wake=new Date(now); wake.setHours(h,m,0,0);
+  if(wake<=now) wake.setDate(wake.getDate()+1);
+  wake.setMinutes(wake.getMinutes()-lead);
+  const p=n=>String(n).padStart(2,"0");
+  return `${wake.getFullYear()}-${p(wake.getMonth()+1)}-${p(wake.getDate())} ${p(wake.getHours())}:${p(wake.getMinutes())}:00`;
+}
+function openEditor(a){
+  editing=a;
+  draft = a ? {
+    name:a.name, wake:fmtWake(a.startTime,a.leadMinutes), lead:a.leadMinutes,
+    days:a.daysOfWeek, color:a.color, sound:a.sound, volume:a.volume, enabled:a.enabled
+  } : {name:"", wake:"05:15", lead:20, days:0, color:null, sound:null, volume:60, enabled:true};
+  $("#editTitle").textContent = a ? "Edit alarm" : "New alarm";
+  $("#fName").value=draft.name||"";
+  $("#fWake").value=draft.wake;
+  $("#fLead").value=draft.lead; $("#leadVal").textContent=draft.lead;
+  $("#fVol").value=draft.volume; $("#volVal").textContent=draft.volume;
+  $("#fEnabled").checked=draft.enabled;
+  renderDayChips(); renderPresets(); refreshColorLbl(); refreshSoundLbl(); updateTimePreview();
+  $("#deleteBtn").classList.toggle("hidden", !a);   // only for existing alarms
+  $("#editMsg").innerHTML="&nbsp;";
+  show("editor");
+}
+function renderDayChips(){
+  const c=$("#dayChips"); c.innerHTML="";
+  DAY_ORDER.forEach(d=>{
+    const b=document.createElement("button"); b.textContent=d;
+    b.classList.toggle("on", !!(draft.days&DAY_BITS[d]));
+    b.onclick=()=>{ draft.days^=DAY_BITS[d]; b.classList.toggle("on"); renderPresets(); };
+    c.appendChild(b);
+  });
+}
+function renderPresets(){ document.querySelectorAll("#presets button").forEach(b=>
+  b.classList.toggle("on", +b.dataset.mask===draft.days)); }
+document.querySelectorAll("#presets button").forEach(b=>b.onclick=()=>{ draft.days=+b.dataset.mask; renderDayChips(); renderPresets(); });
+$("#fWake").oninput=e=>{ draft.wake=e.target.value; updateTimePreview(); };
+$("#fLead").oninput=e=>{ draft.lead=+e.target.value; $("#leadVal").textContent=draft.lead; updateTimePreview(); };
+$("#fVol").oninput=e=>{ draft.volume=+e.target.value; $("#volVal").textContent=draft.volume; };
+function updateTimePreview(){
+  const el=$("#timePreview"); const w=$("#fWake").value;
+  if(!/^\d{2}:\d{2}$/.test(w)){ el.innerHTML="&nbsp;"; return; }
+  const [h,m]=w.split(":").map(Number);
+  const d=new Date(); d.setHours(h,m,0,0); d.setMinutes(d.getMinutes()-draft.lead);
+  const p=n=>String(n).padStart(2,"0");
+  const lightStart=to12(`${p(d.getHours())}:${p(d.getMinutes())}`);
+  el.textContent = draft.lead>0
+    ? `⏰ Rings at ${to12(w)}  ·  🌅 light starts ${lightStart}`
+    : `⏰ Rings at ${to12(w)}  ·  no sunrise ramp`;
+}
+function refreshColorLbl(){
+  $("#colorLbl").textContent = draft.color ? (draft.color.title||("Color "+draft.color.hatchId)) : "Choose a color…";
+  $("#colorSw").style.backgroundImage = draft.color&&draft.color.image ? `url('${draft.color.image}')` : "none";
+}
+function refreshSoundLbl(){ $("#soundLbl").textContent = draft.sound ? (draft.sound.title||("Sound "+draft.sound.hatchId)) : "Choose a sound…"; }
+$("#colorPick").onclick=()=>openPicker("colors");
+$("#soundPick").onclick=()=>openPicker("tracks");
+
+$("#saveBtn").onclick=async ()=>{
+  if(!draft.color||!draft.sound){ $("#editMsg").textContent="Pick a color and a sound first."; return; }
+  const wake = $("#fWake").value || draft.wake || "05:15";   // read the field, not stale state
+  if(!/^\d{2}:\d{2}$/.test(wake)){ $("#editMsg").textContent="Set a wake-up time first."; return; }
+  const btn=$("#saveBtn"); btn.disabled=true; $("#editMsg").innerHTML='<span class="spin"></span> Saving…';
+  const alarm={
+    name:$("#fName").value||"Alarm", startTime:nextStart(wake,draft.lead),
+    leadMinutes:draft.lead, daysOfWeek:draft.days, volume:draft.volume, enabled:$("#fEnabled").checked,
+    color:{hatchId:draft.color.hatchId, contentfulId:draft.color.contentfulId},
+    sound:{hatchId:draft.sound.hatchId, contentfulId:draft.sound.contentfulId, url:draft.sound.url},
+  };
+  try{
+    const payload = editing ? {action:"update",id:editing.id,alarm} : {action:"create",alarm};
+    const d=await api("/api/alarms",{method:"POST",body:payload});
+    renderAlarms(d.alarms); updateSlots(d.freeSlots); hide("editor"); toast("Saved");
+  }catch(e){ $("#editMsg").textContent = e.message==="pin"?"Session expired — reload":("Error: "+e.message); }
+  finally{ btn.disabled=false; }
+};
+
+$("#deleteBtn").onclick=async ()=>{
+  if(!editing) return;
+  if(!confirm("Delete this alarm? This can’t be undone.")) return;
+  const btn=$("#deleteBtn"); btn.disabled=true; $("#editMsg").innerHTML='<span class="spin"></span> Deleting…';
+  try{
+    const d=await api("/api/alarms",{method:"POST",body:{action:"delete",id:editing.id}});
+    renderAlarms(d.alarms); updateSlots(d.freeSlots); hide("editor"); toast("Deleted");
+  }catch(e){ $("#editMsg").textContent = e.message==="pin"?"Session expired — reload":("Error: "+e.message); }
+  finally{ btn.disabled=false; }
+};
+
+/* ---------- catalog picker ---------- */
+async function ctf(q){
+  const r=await fetch(CTF_URL,{method:"POST",headers:{Authorization:"Bearer "+CTF_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({query:q})});
+  const j=await r.json(); if(j.errors) throw new Error(j.errors[0].message); return j.data;
+}
+async function fetchAll(coll, fields, where){
+  let skip=0,out=[],total=Infinity;
+  while(skip<total){ const d=await ctf(`{ ${coll}(limit:100,skip:${skip},where:${where}){ total items{ ${fields} } } }`);
+    const c=d[coll]; total=c.total; out=out.concat(c.items); if(!c.items.length) break; skip+=100; }
+  return out;
+}
+async function ensureCatalog(){
+  if(catalog.tracks) return;
+  $("#pickStatus").textContent="Loading catalog…";
+  const ws=`{ wavFile_exists:true, hatchId_gt:0, hidden:false, tier:"free", devices:{ devCode_in:["${DEVICE}"] } }`;
+  const wc=`{ lightType:"sunrise", hidden:false, tier:"free", devices:{ devCode_in:["${DEVICE}"] } }`;
+  const [sounds,colors]=await Promise.all([
+    fetchAll("soundCollection",`title hatchId sys{id} wavFile{url} theme{title}`,ws),
+    fetchAll("colorCollection",`title hatchId sys{id} image{url}`,wc)
+  ]);
+  const seen=new Set();
+  // Alarm sounds come from the Sound catalog (each has a wav url used for both
+  // in-browser preview and the alarm payload). `theme` groups them into categories.
+  catalog.tracks=sounds.filter(s=>s.wavFile&&s.wavFile.url)
+    .map(s=>({title:s.title, hatchId:s.hatchId, sys:s.sys, url:s.wavFile.url,
+              theme:(s.theme&&s.theme.title)||"Other"}))
+    .filter(s=>{if(seen.has(s.url))return false;seen.add(s.url);return true;})
+    .sort((a,b)=>a.title.localeCompare(b.title));
+  // Category order: alarm-oriented first, then ambient/sleep, then anything else.
+  const PRIORITY=["Alarm Sounds","Ambient & Sleep Sounds","Sleep Sounds"];
+  const present=[...new Set(catalog.tracks.map(t=>t.theme))];
+  catalog.categories=[...PRIORITY.filter(c=>present.includes(c)),
+                      ...present.filter(c=>!PRIORITY.includes(c)).sort()];
+  catalog.colors=colors.sort((a,b)=>a.title.localeCompare(b.title));
+}
+let pickType="tracks", pickTarget="alarm", pickQuery="", pickCat="", playingId=null;
+const audio=$("#audio");
+async function openPicker(type, target="alarm"){
+  pickType=type; pickTarget=target; pickQuery=""; $("#pickSearch").value="";
+  $("#pickTitle").textContent = type==="tracks"?"Choose a sound":"Choose a color";
+  show("picker");
+  try{ await ensureCatalog(); $("#pickStatus").classList.add("hidden");
+    buildCatOptions(); renderPick();
+  }catch(e){ $("#pickStatus").classList.remove("hidden"); $("#pickStatus").textContent="Catalog error: "+e.message; }
+}
+const AMBIENT_CAT="Ambient & Sleep Sounds";
+function buildCatOptions(){
+  const sel=$("#pickCat");
+  if(pickType!=="tracks"){ sel.classList.add("hidden"); return; }
+  sel.classList.remove("hidden");
+  // Night sounds default to the ambient category; alarms to the current sound's
+  // category if known, else the first (Alarm Sounds).
+  if(pickTarget==="night"){
+    pickCat = catalog.categories.includes(AMBIENT_CAT) ? AMBIENT_CAT : catalog.categories[0];
+  }else{
+    const curCat = draft.sound && draft.sound.theme;
+    pickCat = (curCat && catalog.categories.includes(curCat)) ? curCat : catalog.categories[0];
+  }
+  sel.innerHTML = catalog.categories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join("")
+    + `<option value="__all__">All sounds</option>`;
+  sel.value=pickCat;
+}
+$("#pickCat").onchange=e=>{pickCat=e.target.value;renderPick();};
+$("#pickSearch").oninput=e=>{pickQuery=e.target.value.toLowerCase();renderPick();};
+function renderPick(){
+  const grid=$("#pickGrid"); grid.innerHTML="";
+  let items=(pickType==="tracks"?catalog.tracks:catalog.colors);
+  // Category filter applies to sounds; a search query searches across all categories.
+  if(pickType==="tracks" && pickCat!=="__all__" && !pickQuery)
+    items=items.filter(t=>t.theme===pickCat);
+  items=items.filter(i=>i.title.toLowerCase().includes(pickQuery));
+  const cur = pickType==="colors" ? draft.color : (pickTarget==="night" ? night.sound : draft.sound);
+  items.slice(0,400).forEach(it=>{
+    const el=document.createElement("div");
+    el.className="pcard"+(cur&&cur.hatchId===it.hatchId?" sel":"");
+    if(pickType==="tracks"){
+      el.innerHTML=`<div class="t">${escape(it.title)}</div>
+        <span class="badge">${escape(it.theme)}</span>
+        <button class="mini">▶ Preview</button>`;
+      const pb=el.querySelector(".mini");
+      pb.onclick=ev=>{ev.stopPropagation();play(it,pb);};
+    }else{
+      const img=it.image&&it.image.url?`background-image:url('${it.image.url}')`:"";
+      el.innerHTML=`<div class="pimg" style="${img}"></div><div class="t">${escape(it.title)}</div>`;
+    }
+    el.onclick=()=>choose(it);
+    grid.appendChild(el);
+  });
+}
+function play(it,btn){
+  if(playingId===it.hatchId){audio.pause();playingId=null;resetPlay();return;}
+  resetPlay(); audio.src=it.url;
+  audio.play().then(()=>{playingId=it.hatchId;btn.classList.add("playing");btn.textContent="❚❚ Stop";}).catch(()=>btn.textContent="⚠");
+}
+function resetPlay(){document.querySelectorAll(".pcard .mini").forEach(b=>{b.classList.remove("playing");b.textContent="▶ Preview";});}
+audio.onended=()=>{playingId=null;resetPlay();};
+function choose(it){
+  const val={hatchId:it.hatchId, contentfulId:it.sys.id, title:it.title, url:it.url, image:it.image&&it.image.url, theme:it.theme};
+  if(pickType==="colors"){ draft.color=val; }
+  else if(pickTarget==="night"){ setNightSound(val); }
+  else { draft.sound=val; }
+  audio.pause(); playingId=null;
+  hide("picker"); refreshColorLbl(); refreshSoundLbl();
+}
+
+/* ---------- misc ---------- */
+$("#newBtn").onclick=()=>openEditor(null);
+$("#refreshBtn").onclick=loadAlarms;
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>{audio.pause();hide(b.dataset.close);});
+document.querySelectorAll(".modal").forEach(m=>m.onclick=e=>{if(e.target===m){audio.pause();m.classList.add("hidden");}});
+function show(id){$("#"+id).classList.remove("hidden");}
+function hide(id){$("#"+id).classList.add("hidden");}
+function escape(s){return String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+let toastT; function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2200);}
+function handleErr(e,fallback){ if(e.message==="pin"){sessionStorage.removeItem("hatchPin");location.reload();return;} toast(fallback+": "+e.message); }
+
+/* ---------- night-sky stars ---------- */
+(function seedStars(){
+  const sky=document.getElementById("sky"); if(!sky) return;
+  const frag=document.createDocumentFragment();
+  for(let i=0;i<46;i++){
+    const s=document.createElement("span"); s.className="star";
+    const sz=(Math.random()*1.8+1).toFixed(1);
+    s.style.width=s.style.height=sz+"px";
+    s.style.left=(Math.random()*100).toFixed(2)+"%";
+    s.style.top=(Math.random()*52).toFixed(2)+"%";   // keep to the dark upper sky
+    s.style.opacity=(Math.random()*.5+.35).toFixed(2);
+    s.style.animationDelay=(Math.random()*4).toFixed(2)+"s";
+    if(Math.random()<.16) s.style.boxShadow="0 0 9px 2px rgba(255,255,255,.7)";
+    frag.appendChild(s);
+  }
+  sky.appendChild(frag);
+})();
+
+buildKeypad();
+if(PIN){ // try to resume session
+  fetch(API_BASE+"/api/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pin:PIN})})
+    .then(r=>r.json()).then(d=>{ if(d.ok) enterApp(); else { sessionStorage.removeItem("hatchPin"); } }).catch(()=>{});
+}
+</script>
+</body>
+</html>
